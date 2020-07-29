@@ -89,7 +89,6 @@ const egov = {
 
         await this.page.$eval('button[id="searchSignButton"]', el => el.click());
 
-        // this.page.waitForNavigation({ waitUntil: 'networkidle2' }); 
     },
 
     sendCertificate: async () => {
