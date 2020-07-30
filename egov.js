@@ -2,8 +2,6 @@ const puppeteer = require("puppeteer");
 const fetch = require("node-fetch");
 const fs = require("fs");
 const FormData = require("form-data");
-var xmlenc = require('xml-encryption');
-var SignedXml = require('xml-crypto').SignedXml	 
 
 const LOGIN_URL = 'https://idp.egov.kz/idp/sign-in';
 const PDF_URL = 'https://egov.kz/services/P30.01/#/declaration/0/,/';
@@ -79,7 +77,7 @@ const egov = {
 
         await this.page.type('input[class="input-type kb_small ng-scope ng-valid monospace ng-pristine"]', egovBin);
 
-        await this.page.waitFor(3000);
+        await this.page.waitFor(5000);
 
         const captchaEl = await this.page.$('img[id="captcha_picture"]');
         await egov.downloadCaptcha(captchaEl);
@@ -92,65 +90,40 @@ const egov = {
     },
 
     sendCertificate: async () => {
-        const btnSelector = "#sign > div > div > div > div:nth-child(2) > eds > div > div > div:nth-child(2) > figure > figcaption > a";
-        await this.page.waitForSelector(btnSelector);
-        await this.page.evaluate(({
-            btnSelector
-        }) => {
-            const btn = document.querySelector(btnSelector);
-            btn.click();
-        }, {
-            btnSelector
-        })
+        // const btnSelector = "#sign > div > div > div > div:nth-child(2) > eds > div > div > div:nth-child(2) > figure > figcaption > a";
+        // await this.page.waitForSelector(btnSelector);
+        // await this.page.evaluate(({
+        //     btnSelector
+        // }) => {
+        //     const btn = document.querySelector(btnSelector);
+        //     btn.click();
+        // }, {
+        //     btnSelector
+        // })
 
         await this.page.waitFor(5000);
 
-        const url = SEND_EDS_URL + this.captcha;
-        // const url = "https://egov.kz/services/P30.01/rest/app/xml";
+        // const url = SEND_EDS_URL + this.captcha;
 
+        const xml_data = await this.page.evaluate(async () => {
+            console.log('started');
+            const url = "https://egov.kz/services/P30.01/rest/app/xml";
+            return await fetch(url, {
+                    'method': 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        declarantUin: "140140015980",
+                        bin: "140140015980"
+                    })
+                }).then(resp => resp.json())
+                .then(data => data.xml)
+                .catch(err => err);
+        });
 
-        // body = {
-        //     declarantUin: "140140015980",
-        //     bin: "140140015980"
-        // }
-        // const options = {
-        //     rsa_pub: fs.readFileSync('./certificate/cert.pub'),
-        //     pem: fs.readFileSync('./certificate/cert.pem'),
-        //     encryptionAlgorithm: 'http://www.w3.org/2001/04/xmlenc#aes256-cbc',
-        //     keyEncryptionAlgorithm: 'http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p',
-        //     disallowEncryptionWithInsecureAlgorithm: true,
-        //     warnInsecureAlgorithm: true
-        // };
-
-        // const signedXml = xmlenc.encrypt('blabla', options, (err, result) => {
-        //     console.log(err, result);
-        // })
-        var xml = "<library>" +
-	            "<book>" +
-	              "<name>Harry Potter</name>" +
-	            "</book>" +
-              "</library>"
-              
-        var sig = new SignedXml()
-        sig.addReference("//*[local-name(.)='book']")    
-        sig.signingKey = fs.readFileSync("./certificate/GOSTKNCA.p12")
-        sig.computeSignature(xml)
-        fs.writeFileSync("./certificate/signed.xml", sig.getSignedXml())
-
-
-        const data = fs.ReadStream('./certificate/signed.xml');
-
-        await fetch(url, {
-                'method': 'POST',
-                body: data,
-            }).then(resp => resp.json())
-            .then(data => {
-                console.log(data);
-            })
-            .catch(err => {
-                console.log(err);
-            });
-        console.log('test');
+        console.log(xml_data);
     }
 
     // getPdf: async () => {

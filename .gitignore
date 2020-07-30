@@ -3,5 +3,3 @@ node_modules/
 captcha_images/*
 certificate/*
 
-!captcha_images/.gitkeep 
-!certificate/.gitkeep 
