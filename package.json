@@ -12,11 +12,7 @@
     "dotenv": "^8.2.0",
     "form-data": "^3.0.0",
     "fs": "0.0.1-security",
-    "http": "0.0.1-security",
-    "https": "^1.0.0",
     "node-fetch": "^2.6.0",
-    "puppeteer": "^5.2.1",
-    "xml-crypto": "^1.5.3",
-    "xml-encryption": "^1.2.0"
+    "puppeteer": "^5.2.1"
   }
 }

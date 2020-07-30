@@ -13,6 +13,5 @@ const p12 = process.env.P12;
 
     await egov.passCaptcha(egovBin);
 
-    await egov.sendCertificate(egovBin, p12);
-
+    await egov.getPdfUrl(egovBin, p12);
 })();
