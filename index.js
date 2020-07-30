@@ -3,6 +3,7 @@ require('dotenv').config();
 
 const egovBin = process.env.EGOV_BIN;
 const egovPassword = process.env.EGOV_PASSWORD;
+const p12 = process.env.P12;
 
 (async () => {
 
@@ -12,6 +13,6 @@ const egovPassword = process.env.EGOV_PASSWORD;
 
     await egov.passCaptcha(egovBin);
 
-    await egov.sendCertificate();
+    await egov.sendCertificate(egovBin, p12);
 
 })();

@@ -7,6 +7,7 @@ const LOGIN_URL = 'https://idp.egov.kz/idp/sign-in';
 const PDF_URL = 'https://egov.kz/services/P30.01/#/declaration/0/,/';
 const CAPTCHA_SOLVER_URL = 'http://0.0.0.0:4000/egov-captcha-solver/';
 const SEND_EDS_URL = 'https://egov.kz/services/P30.01/rest/app/send-eds?captchaCode='
+const NCA_NODE_URL = 'http://127.0.0.1:14579'
 
 
 const egov = {
@@ -51,13 +52,13 @@ const egov = {
 
     downloadCaptcha: async (captchaImage) => {
         await captchaImage.screenshot({
-            path: './captcha_images/captcha.jpg',
+            path: './captcha.jpg',
             omitBackground: true,
         });
     },
 
     decryptCaptcha: async () => {
-        const file = fs.ReadStream('./captcha_images/captcha.jpg');
+        const file = fs.ReadStream('./captcha.jpg');
 
         const formData = new FormData();
         formData.append('file', file)
@@ -89,23 +90,13 @@ const egov = {
 
     },
 
-    sendCertificate: async () => {
-        // const btnSelector = "#sign > div > div > div > div:nth-child(2) > eds > div > div > div:nth-child(2) > figure > figcaption > a";
-        // await this.page.waitForSelector(btnSelector);
-        // await this.page.evaluate(({
-        //     btnSelector
-        // }) => {
-        //     const btn = document.querySelector(btnSelector);
-        //     btn.click();
-        // }, {
-        //     btnSelector
-        // })
+    sendCertificate: async (egovBin, p12) => {
 
-        await this.page.waitFor(5000);
+        // await this.page.waitFor(5000);
 
-        // const url = SEND_EDS_URL + this.captcha;
-
-        const xml_data = await this.page.evaluate(async () => {
+        const xml_data = await this.page.evaluate(async ({
+            egovBin
+        }) => {
             console.log('started');
             const url = "https://egov.kz/services/P30.01/rest/app/xml";
             return await fetch(url, {
@@ -115,15 +106,72 @@ const egov = {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        declarantUin: "140140015980",
-                        bin: "140140015980"
+                        "declarantUin": egovBin,
+                        "bin": egovBin
                     })
                 }).then(resp => resp.json())
                 .then(data => data.xml)
-                .catch(err => err);
+                .catch(err => {
+                    console.log(err);
+                });
+        }, {
+            egovBin
         });
 
-        console.log(xml_data);
+        const signed_xml = await fetch(NCA_NODE_URL, {
+                'method': 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "version": "1.0",
+                    "method": "XML.sign",
+                    "params": {
+                        "p12": p12,
+                        "password": "1234aa",
+                        "xml": xml_data
+                    }
+                })
+            }).then(resp => resp.json())
+            .then(data => data['result']['xml'])
+            .catch(err => {
+                console.log(err);
+            })
+
+        const url = SEND_EDS_URL + this.captcha;
+        
+        const requestNumber = await this.page.evaluate(async ({url, signed_xml}) => {
+            return await fetch(url, {
+                'method': 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({'xml': signed_xml})
+            }).then(resp => resp.json())
+            .then(data => data['requestNumber'])
+            .catch(err => {
+                console.log(err);
+            })
+        }, {url, signed_xml})
+
+        console.log(requestNumber);
+
+        await this.page.waitFor(5000);
+
+        const downloadPdfUrl = await this.page.evaluate(async ({requestNumber}) => {
+            const url = "https://egov.kz/services/P30.01/rest/request-states/" + requestNumber;
+            return await fetch(url)
+            .then(resp => resp.json())
+            .then(data => data["resultsForDownload"][1]["url"])
+            .catch(err => {
+                console.log(err);
+            })
+        }, {requestNumber});
+
+        console.log(downloadPdfUrl);
+        await this.page.goto(downloadPdfUrl)
     }
 
     // getPdf: async () => {
